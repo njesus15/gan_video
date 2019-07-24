@@ -26,7 +26,6 @@ class UAVDataset(torch.utils.data.Dataset):
         """
         with open(pickle_path, 'rb') as handle:
             self.flight_frames = pickle.load(handle)
-        print(self.flight_frames.head())
         self.transform = transform
 
     def __len__(self):
@@ -38,7 +37,11 @@ class UAVDataset(torch.utils.data.Dataset):
 
         if self.transform:
             data = self.transform(data)
+
+        # Apply transform to each image, then group into batches of 64!
+
         return data
+
 
 
 class Rescale(object):
@@ -46,14 +49,11 @@ class Rescale(object):
         assert isinstance(output_size, (int, tuple))
         self.output_size = output_size
 
-    def __call__(self, sample_video):
-        video = sample_video['video']
-        video_array = []
-        for frame in video: # (path, class)
-            img = image.load_img(frame[0], target_size=(self.output_size, self.output_size))
-            img = np.array(img)
-            video_array.append(img)
-        return {'video': np.array(video_array)}
+    def __call__(self, sample):
+        filename = sample['video']
+        img = image.load_img(filename, target_size=(self.output_size, self.output_size))
+        img = np.array(img) / 255.0
+        return {'video': [img, filename]}
 
 
 class ToTensor(object):
@@ -63,16 +63,21 @@ class ToTensor(object):
     Input tensors are of size (N, Channels, Depth, Height, Width)
     TODO: Fix class values. """
     def __call__(self, sample):
-        video = sample['video']
-        video = video.transpose((3, 0, 1, 2)) #
-        video = torch.from_numpy(video)
-        video_dim5 = video.unsqueeze(0)
-        return {'video': video_dim5}
+        img = sample['video'][0]
+        filename = sample['video'][1]
+        trans = transforms.ToTensor()
+        video = trans(img)
+        #video = video.permute(1, 2, 0)
+        norm_t = transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+        video = norm_t(video.float())
+        video = video.unsqueeze(0)
+        return {'video': [video, filename]}
 
 class Normalize():
 
     def __call__(self, sample):
-        video = sample['video']
+        video = sample['video'][0]
+        filename = sample['video'][1]
         x = transforms.Normalize(0.5, 0.5)
         video = x(video)
-        return {'video': video}
+        return {'video': [video, filename]}
