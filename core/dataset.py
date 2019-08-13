@@ -20,9 +20,9 @@ class UAVDataset(torch.utils.data.Dataset):
     def __init__(self, pickle_path, transform=None):
         """
 
-        :param csv_file_path:
-        :param root_dir:
-        :param transform:
+        :param csv_file_path: path to saved csv file
+        :param root_dir: root directory where data is stored
+        :param transform: tensor.transforms applied to data
         """
         with open(pickle_path, 'rb') as handle:
             self.flight_frames = pickle.load(handle)
@@ -45,29 +45,37 @@ class UAVDataset(torch.utils.data.Dataset):
 
 
 class Rescale(object):
+    """ Transform to rescale image
+    """
     def __init__(self, output_size):
+        """
+        :param output_size: int to resize image (3 x output_size x output_size)
+        """
         assert isinstance(output_size, (int, tuple))
         self.output_size = output_size
 
     def __call__(self, sample):
+        """
+        returns dictionary with key 'video' and img array and path
+
+        """
         filename = sample['video']
         img = image.load_img(filename, target_size=(self.output_size, self.output_size))
-        img = np.array(img) / 255.0
         return {'video': [img, filename]}
 
 
 class ToTensor(object):
     """
-    Converts data to tensors
+    Converts data to tensors and applies normalization transform
 
     Input tensors are of size (N, Channels, Depth, Height, Width)
+
     TODO: Fix class values. """
     def __call__(self, sample):
         img = sample['video'][0]
         filename = sample['video'][1]
         trans = transforms.ToTensor()
         video = trans(img)
-        #video = video.permute(1, 2, 0)
         norm_t = transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
         video = norm_t(video.float())
         video = video.unsqueeze(0)

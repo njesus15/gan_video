@@ -1,0 +1,6 @@
+.DS_Store
+/data_compressed
+/UAV123
+**/logs
+__pycache__
+/runs

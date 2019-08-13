@@ -1,21 +1,20 @@
-# %load '/Users/jesusnavarro/Desktop/gan_video/core/main.py'
 from keras_preprocessing.image import save_img
 from torch import optim
 from torch.utils.data import DataLoader
-import torch.autograd
-from torchvision.transforms import transforms
+from utils import *
 from torchvision.transforms import ToPILImage
 import logging
 from core.model import *
-from core.UAVDataset import *
+from core.dataset import *
 from examples.Logger import Logger
 import sys
 import imageio
 from skimage import img_as_ubyte
 
 
-# Receives [3,32,64,64] tensor, and creates a gif
 def make_gif(images, filename):
+    # Receives [3,32,64,64] tensor, and creates a gif
+
     x = images.permute(1,2,3,0)
     x = x.numpy()
     x = img_as_ubyte(x)
@@ -66,7 +65,7 @@ if __name__ == '__main__':
 
     # Create binary cross entropy function
     loss = torch.nn.BCELoss()
-    batch_size = 32
+    batch_size = 32*15
 
     # Define transforms to apply to the data
     composed = transforms.Compose([Rescale(64), ToTensor()])
@@ -113,10 +112,13 @@ if __name__ == '__main__':
         save = True
 
         for (iter_num, batch) in enumerate(data_loader, 1):
+            print(iter_num)
             if i == 0:
                 real_video = batch['video'][0]
+                real_video = real_video.view(int(real_video.size(0) // 32), 32, 3, 64, 64)
                 filenames = batch['video'][1]
-                real_video = torch.squeeze(real_video, dim=1).unsqueeze(0)
+                #real_video = torch.squeeze(real_video, dim=1).unsqueeze(0) # (1,32,3,64,64)
+                real_first_frame = real_video[:, 0:1, :, :, :]
                 i += 1
             # reset gradients
             generator.zero_grad()
@@ -131,53 +133,55 @@ if __name__ == '__main__':
 
 
             # Train discriminator
-            d_real_output_sig, d_real_output = discriminator(real_video.permute(0, 2, 1, 3, 4).float())
-            d_real_output_sig, d_real_output = d_real_output_sig.squeeze(), d_real_output.squeeze()
+            if not iter_num % 2 == 0:
+                d_real_output_sig, d_real_output = discriminator(real_video.permute(0, 2, 1, 3, 4).float())
+                d_real_output_sig, d_real_output = d_real_output_sig.squeeze(), d_real_output.squeeze()
 
-            # Generate a fake video, detach parameters
-            latent_z = torch.randn(N, 100, 1, 1, 1)
-            fake_video = generator(latent_z).detach()
-            d_fake_output_sig, d_fake_output = discriminator(fake_video)
+                # Generate a fake video, detach parameters
+                fake_video = generator(real_first_frame.squeeze()).detach()
+                d_fake_output_sig, d_fake_output = discriminator(fake_video)
 
-            # Compute real and fake loss
-            if N == 1:
-                d_fake_output = d_fake_output.squeeze().unsqueeze(0)
-                d_real_output = d_real_output.squeeze().unsqueeze(0)
-            else:
-                d_fake_output = d_fake_output.squeeze()
-                d_real_output = d_real_output.squeeze()
+                # Compute real and fake loss
+                if N == 1:
+                    d_fake_output = d_fake_output.squeeze().unsqueeze(0)
+                    d_real_output = d_real_output.squeeze().unsqueeze(0)
+                else:
+                    d_fake_output = d_fake_output.squeeze()
+                    d_real_output = d_real_output.squeeze()
 
-            d_loss = -(torch.mean(d_real_output) - torch.mean(d_fake_output))
+                #d_loss = -(torch.mean(d_real_output) - torch.mean(d_fake_output))
+                d_loss = loss(d_real_output_sig.squeeze().float(), real_labels.float()) + \
+                         loss(d_fake_output_sig.squeeze().float(), fake_labels.float())
 
-            # Update Gradient
-            d_loss.backward()
-            d_optimizer.step()
 
-            for p in discriminator.parameters():
-                p.data.clamp_(-0.01, 0.01)
+                # Update Gradient
+                d_loss.backward()
+                d_optimizer.step()
 
-            if iter_num % 2 == 0:  # Train generator
-                first_frame = real_video[0:1, 0:1, :, :, :].squeeze()
-                latent_z = torch.randn(N, 100, 1, 1, 1)
-                fake_videos = generator(latent_z)
+                for p in discriminator.parameters():
+                    p.data.clamp_(-0.01, 0.01)
+
+            else:  # Train generator
+                real_first_frame = real_video[:, 0:1, :, :, :]
+                fake_videos = generator(real_first_frame.squeeze())
                 d_fake_outputs_sig, d_fake_outputs = discriminator(fake_videos)
                 d_fake_outputs_sig, d_fake_outputs = d_fake_outputs_sig.squeeze(), d_fake_outputs.squeeze()
-                gen_first_frame = fake_videos[0:1, :, 0:1, :, :].squeeze()
-                reg_loss = torch.mean(torch.abs(real_video.float() - fake_videos.permute(0,2,1,3,4).float())) * l1_lambda
-                g_loss = -torch.mean(d_fake_outputs) + reg_loss
+                fake_first_frame = fake_videos[:, :, 0:1, :, :]
+                reg_loss = torch.mean(torch.abs(real_first_frame.float() - fake_first_frame.float())) * l1_lambda
+                #g_loss = -torch.mean(d_fake_outputs) + reg_loss
+                g_loss = loss(d_fake_outputs_sig.float(), real_labels.float())
                 g_loss.backward()
                 g_optimizer.step()
 
-            if iter_num % 5 == 0:
+            if iter_num % 2 == 0:
                 logger.display_status(
                     epoch, num_epochs, iter_num, len(data_loader),
                     d_loss, g_loss, d_real_output, d_fake_output
                 )
 
-                if (epoch + 1) % 10 == 0 and save:
+                if (epoch + 1) % 3 == 0 and save:
 
-                    sample_input = torch.randn(N, 100, 1, 1, 1)
-                    gen_out = generator(sample_input)
+                    gen_out = generator(real_first_frame)
 
                     t = gen_out.data.cpu()[0:1, :, 0:1, :, :].squeeze()
 
@@ -188,13 +192,6 @@ if __name__ == '__main__':
                     make_gif(denorm(gen_out.data.cpu()[0]),
                              DIR_TO_SAVE + 'fake_gifs_sample_it%s_epoch%s.gif' % (iter_num, epoch))
 
-                    x = first_frame.data.cpu()
-
-                    # Save image from real video
-                    save_img(x=np.transpose(x, (1,2,0)),
-                             path=DIR_TO_SAVE + 'real_img_it%s_epoch%s.jpg' % (iter_num, epoch))
-                    make_gif(fake_videos.data.cpu()[0],
-                             DIR_TO_SAVE + 'fake_gifs_unnorm_it%s_epoch%s.gif' % (iter_num, epoch))
                     save = False
 
 

@@ -6,7 +6,7 @@ from torchvision import transforms, utils
 from core.gen_net import *
 from core.disc_net import *
 import matplotlib.pyplot as plt
-from core.UAVDataset import *
+from core.dataset import *
 from torch.autograd import Variable
 import numpy as np
 
