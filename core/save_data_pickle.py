@@ -14,32 +14,16 @@ def save_data_csv(prefix, root_dir):
             # append each path
             for images in img_names:
                 data_frame.append([os.path.join(class_dir, images), sub_dir])
+    data_frame = sorted(data_frame, key=lambda x: x[0])
+    pd_data_frame = pd.DataFrame(data_frame, columns=['video', 'class'])
 
-    video_data_frame = []
-    # group into frames of 32
-    tmp_video = []
-    for i, frame in enumerate(data_frame):
-        if (i + 1) % 33 == 0:
-            video_data_frame.append([tmp_video])
-            tmp_video = []
-        else:
-            tmp_video.append(frame)
-
-    # remove last video if len < 32
-
-    if len(video_data_frame[-1]) < 32:
-        video_data_frame = video_data_frame[:-2]
-
-
-    pd_data_frame = pd.DataFrame(video_data_frame, columns=['video'])
     return pd_data_frame
 
 
 root_dir = '/Users/jesusnavarro/Desktop/gan_video/UAV123/data_seq/UAV123/'
 df = save_data_csv('bike', root_dir)
 
-print(df.head())
 
-with open('/Users/jesusnavarro/Desktop/gan_video/pickle_data/test_2000_videos.pickle', 'wb') as handle:
-    pickle.dump(df[:2000], handle)
+with open('/Users/jesusnavarro/Desktop/gan_video/pickle_data/test_boat_videos.pickle', 'wb') as handle:
+    pickle.dump(df, handle)
 print(df.head())
