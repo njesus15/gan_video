@@ -11,6 +11,8 @@ from torchvision.transforms import ToPILImage
 import logging
 from core.model import *
 from core.dataset import *
+import numpy as np
+import cv2
 
 
 def make_gif(images, filename):
@@ -58,6 +60,7 @@ def save_image(img, filename):
     img = pil_img(img)
     img.save(filename)
 
+
 def create_dataloader(filename, video_batches=2, shuffle=False):
     """ Helper function to create and return data loader
      """
@@ -66,7 +69,7 @@ def create_dataloader(filename, video_batches=2, shuffle=False):
     # Define transforms to apply to the data
     composed = transforms.Compose([Rescale(64), ToTensor()])
 
-    working_dir = '/Users/jesusnavarro/Desktop/gan_video/pickle_data/'
+    working_dir = '../pickle_data/'
     full_path = working_dir + filename
 
     try:
@@ -82,6 +85,7 @@ def create_dataloader(filename, video_batches=2, shuffle=False):
                              batch_size=batch_size,
                              shuffle=shuffle)
     return data_loader
+
 
 def d_loss_step(discriminator, generator, real_video, fake_video):
     """
@@ -105,12 +109,30 @@ def d_loss_step(discriminator, generator, real_video, fake_video):
 
     return d_loss, d_real_output, d_fake_output
 
-def g_loss_step(discriminator, fake_video, real_randframe, rand_int, l1_lambda):
+
+def g_loss_step(discriminator, fake_video, real_randframe, real_first_frame, rand_int, l1_lambda):
     """ TODO: Double check the subtraction from fake and random frame """
     d_fake_outputs_sig, d_fake_outputs = discriminator(fake_video)
     d_fake_outputs_sig, d_fake_outputs = d_fake_outputs_sig.squeeze(), d_fake_outputs.squeeze()
-    fake_first_frame = fake_video[:, :, rand_int:rand_int + 1, :, :].permute(0, 2, 1, 3, 4)
-    reg_loss = torch.mean(torch.abs(real_randframe.float() - fake_first_frame.float())) * l1_lambda
-    g_loss = -torch.mean(d_fake_outputs) + reg_loss
+    fake_randframe = fake_video[:, :, rand_int:rand_int + 1, :, :].permute(0, 2, 1, 3, 4)
+    frame_pred_loss = float(rand_int) / 32.0 * torch.mean(torch.abs(real_first_frame.float() - real_randframe.float()))
+    reg_loss = torch.mean(torch.abs(real_randframe.float() - fake_randframe.float())) * l1_lambda
+    g_loss = -torch.mean(d_fake_outputs) + reg_loss - frame_pred_loss
 
     return g_loss, d_fake_outputs
+
+
+def extract_frames(filename):
+    """ Saves video into frames and returns file paths"""
+    cap = cv2.VideoCapture(filename)
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        cv2.imshow('frame', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+

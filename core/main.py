@@ -35,6 +35,9 @@ def train_gan(filename=None, epochs=100, l1_lambda=10):
     d_optimizer = optim.RMSprop(discriminator.parameters(), lr=5e-5)
     g_optimizer = optim.RMSprop(generator.parameters(), lr=5e-5)
 
+    # first frames list
+    first_frames = []
+
     for epoch in range(epochs):
         for (iter_num, batch) in enumerate(data_loader, 1):
             rand_int = numpy.random.randint(0, 32)
@@ -42,9 +45,13 @@ def train_gan(filename=None, epochs=100, l1_lambda=10):
                 real_video = batch['video'].view(vid_batch, 32, 3, 64, 64)
                 filenames = batch['filename']
                 real_randframe = real_video[:, rand_int:rand_int + 1, :, :, :]
+                real_first_frame = real_video[:, 0:1 , :, :, :]
 
-                # Generate a fake video using random frame and detach its parameters
-                fake_video = generator(real_randframe.squeeze())
+                if epoch == 0:
+                    first_frames.append(real_first_frame)
+
+                # Generate a fake video using first frame
+                fake_video = generator(real_first_frame.squeeze())
 
                 # reset gradients
                 generator.zero_grad()
@@ -71,6 +78,7 @@ def train_gan(filename=None, epochs=100, l1_lambda=10):
                     g_loss, d_fake_output = g_loss_step(discriminator=discriminator,
                                                         fake_video=fake_video,
                                                         real_randframe=real_randframe,
+                                                        real_first_frame = real_first_frame,
                                                         rand_int=rand_int,
                                                         l1_lambda=l1_lambda)
 
@@ -83,7 +91,8 @@ def train_gan(filename=None, epochs=100, l1_lambda=10):
                         d_loss, g_loss, d_real_output, d_fake_output
                     )
 
-        gen_out = generator(real_randframe.squeeze())
+        real_frame_id = epoch % (len(data_loader) - 2)
+        gen_out = generator(first_frames[real_frame_id].squeeze())
 
         t = gen_out.data.cpu()[0:1, :, 0:1, :, :].squeeze()
 
@@ -98,4 +107,4 @@ def train_gan(filename=None, epochs=100, l1_lambda=10):
 
 
 if __name__ == '__main__':
-    gen, dis = train_gan('test_boat_videos.pickle')
+    gen, dis = train_gan('vid1.pickle', epochs=1, l1_lambda=50)

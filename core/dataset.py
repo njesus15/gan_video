@@ -32,8 +32,9 @@ class UAVDataset(torch.utils.data.Dataset):
         return len(self.flight_frames)
 
     def __getitem__(self, item_id):
-        video_frames = self.flight_frames.iloc[item_id]['video']
-        data = {'video': video_frames}
+        image_paths = self.flight_frames.iloc[item_id]['video']
+        class_image_paths = self.flight_frames.iloc[item_id]['class']
+        data = {'video': image_paths, 'class': class_image_paths, 'filename': image_paths}
 
         if self.transform:
             data = self.transform(data)
@@ -61,7 +62,9 @@ class Rescale(object):
         """
         filename = sample['video']
         img = image.load_img(filename, target_size=(self.output_size, self.output_size))
-        return {'video': [img, filename]}
+        sample['video'] = img
+
+        return sample
 
 
 class ToTensor(object):
@@ -72,14 +75,14 @@ class ToTensor(object):
 
     TODO: Fix class values. """
     def __call__(self, sample):
-        img = sample['video'][0]
-        filename = sample['video'][1]
+        img = sample['video']
         trans = transforms.ToTensor()
         video = trans(img)
         norm_t = transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
         video = norm_t(video.float())
         video = video.unsqueeze(0)
-        return {'video': [video, filename]}
+        sample['video'] = video
+        return sample
 
 class Normalize():
 

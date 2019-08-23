@@ -20,8 +20,8 @@ def save_data_csv(prefix, root_dir):
     return pd_data_frame
 
 
-root_dir = '/Users/jesusnavarro/Desktop/gan_video/UAV123/data_seq/UAV123/'
-df = save_data_csv('bike', root_dir)
+root_dir = '/Users/jesusnavarro/Desktop/gan_video/data_compressed/data_seq/UAV123_10fps/'
+df = save_data_csv('boat', root_dir)
 
 
 with open('/Users/jesusnavarro/Desktop/gan_video/pickle_data/test_boat_videos.pickle', 'wb') as handle:
