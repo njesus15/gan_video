@@ -40,20 +40,12 @@ class Encoder(nn.Module):
                                                ),
                                      nn.BatchNorm2d(512),
                                      nn.ReLU(True))
-        self.hidden4 = nn.Sequential(nn.Conv2d(in_channels=512,
-                                               out_channels=100,
-                                               kernel_size=(4, 4),
-                                               stride=(1, 1),
-                                               ),
-                                     nn.ReLU(True)
-                                     )
 
     def forward(self, x):
         x = self.hidden0(x)
         x = self.hidden1(x)
         x = self.hidden2(x)
         x = self.hidden3(x)
-        x = self.hidden4(x)
 
         return x
 
@@ -122,12 +114,7 @@ class ForegroundStream(nn.Module):
 
     def __init__(self):
         super(ForegroundStream, self).__init__()
-        self.hidden0 = nn.Sequential(nn.ConvTranspose3d(in_channels=100,
-                                                        out_channels=512,
-                                                        kernel_size=(2, 4, 4),
-                                                        stride=(1, 1, 1)),
-                                     nn.BatchNorm3d(512),
-                                     nn.ReLU(True))
+
 
         self.hidden1 = nn.Sequential(nn.ConvTranspose3d(in_channels=512,
                                                         out_channels=256,
@@ -160,7 +147,6 @@ class ForegroundStream(nn.Module):
         :return: (numpy.ndarray) outer layer of cnn
 
         """
-        x = self.hidden0(x)
         x = self.hidden1(x)
         x = self.hidden2(x)
         x = self.hidden3(x)
@@ -173,14 +159,6 @@ class BackgroundStream(nn.Module):
     def __init__(self):
         super(BackgroundStream, self).__init__()
 
-        self.hidden0 = nn.Sequential(nn.ConvTranspose2d(in_channels=100,
-                                                        out_channels=512,
-                                                        kernel_size=(4, 4),
-                                                        stride=(1, 1),
-                                                        padding=(0, 0)
-                                                        ),
-                                     nn.BatchNorm2d(512),
-                                     nn.ReLU(True))
 
         self.hidden1 = nn.Sequential(nn.ConvTranspose2d(in_channels=512,
                                                         out_channels=256,
@@ -213,7 +191,6 @@ class BackgroundStream(nn.Module):
                                      )
 
     def forward(self, x):
-        x = self.hidden0(x)
         x = self.hidden1(x)
         x = self.hidden2(x)
         x = self.hidden3(x)
@@ -251,10 +228,10 @@ class VideoGen(nn.Module):
 
     def forward(self, x):
         latent = self.encode(x).unsqueeze(dim=2)
-        video = self.fg_stream(latent)
+        video = self.fg_stream(latent.repeat(1, 1, 2, 1, 1))
         fg = self.video(video)
         mask = self.mask(video)
-        background = self.bg_stream(latent.squeeze(dim=3))  # (-1, 3, 64, 64)
+        background = self.bg_stream(latent.squeeze(dim=2))  # (-1, 3, 64, 64)
         background_frames = background.unsqueeze(2).repeat(1, 1, 32, 1, 1)
         mask_frames = mask.repeat(1, 3, 1, 1, 1)
 

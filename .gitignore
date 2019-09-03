@@ -119,6 +119,8 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
-
+mp4videos/*
+pickle_data/*
+images/*
 # Pyre type checker
 .pyre/
