@@ -195,7 +195,7 @@ def split_test_train_data(pickle_filename, fps=30, scale=0.20):
 
     path_to_pickle_file = '../pickle_data/' + pickle_filename
     assert os.path.exists(path_to_pickle_file), "Pickle file does not exist"
-    assert 0 < fps <= 30, "fps needs to be between 0 and 31 "
+    assert 0 < fps <= 32, "fps needs to be between 0 and 31 "
 
     # load data
     with open(path_to_pickle_file, 'rb') as handle:
@@ -203,9 +203,9 @@ def split_test_train_data(pickle_filename, fps=30, scale=0.20):
     print(len(data_frame))
 
     filtered_data = []
-    interval_size = int(30 // fps)
+    interval_size = int(32 // fps)
     for i in range(len(data_frame)):
-        val = i % 30
+        val = i % 32
         check = val % interval_size
         if check == 0:
             val_item = data_frame.iloc[i]
@@ -252,7 +252,7 @@ if __name__ == '__main__':
     #clean_video(filename)
     df = save_data_csv(['nba_slow_mode'], filename='nba_slow_mode.pickle')
 
-    fps_ = [30, 20, 10, 5, 2]
+    fps_ = [16]
 
     for fps in fps_:
         tt, t = split_test_train_data('nba_slow_mode.pickle', fps=fps, scale=0.10)

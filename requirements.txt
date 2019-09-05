@@ -37,6 +37,7 @@ google-resumable-media==0.3.2
 googleapis-common-protos==1.5.5
 gunicorn==19.9.0
 idna==2.8
+imageio==2.5.0
 ipaddress==1.0.22
 ipykernel==4.10.0
 ipython==5.8.0
@@ -69,6 +70,7 @@ pbr==5.4.2
 PDPbox==0.2.0
 pexpect==4.6.0
 pickleshare==0.7.5
+Pillow==6.1.0
 post==2019.3.22
 prometheus-client==0.6.0
 prompt-toolkit==1.0.15
@@ -86,6 +88,7 @@ pyspark==2.4.2
 python-daemon==2.1.2
 python-dateutil==2.7.5
 pytz==2018.9
+PyYAML==5.1.2
 pyzmq==18.0.1
 qtconsole==4.4.3
 query-string==2019.3.22
